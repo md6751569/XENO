@@ -1,53 +1,161 @@
-local X, I, E
+-- ==========================================
+--           XENO PREMIUM SYSTEM
+--             SERVER CHECK V2
+-- ==========================================
 
--- ===== KEY + EXPIRY SYSTEM =====
-local LICENSE_KEY = "XENO-999"
+-- BASE64 DECODER
+local function B64Decode(data)
+    local chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
--- Expiry date is Base64-encoded (obfuscation only, not encryption).
-local EXPIRY_B64 = "MjAyNi0xMS0xNg=="
-
-local function base64Decode(data)
-    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    local lookup = {}
-    for i = 1, #chars do
-        lookup[chars:sub(i, i)] = i - 1
-    end
-
-    local result = {}
-    local buffer, bits = 0, 0
+    local output = {}
+    local buffer = 0
+    local bits = 0
 
     for i = 1, #data do
         local c = data:sub(i, i)
-        if c ~= "=" then
-            local value = lookup[c]
-            if value == nil then
-                return nil
-            end
 
-            buffer = buffer * 64 + value
+        if c == "=" then
+            break
+        end
+
+        local value = chars:find(c, 1, true)
+
+        if value then
+            buffer = buffer * 64 + value - 1
             bits = bits + 6
 
             if bits >= 8 then
                 bits = bits - 8
-                local byte = math.floor(buffer / (2 ^ bits)) % 256
-                result[#result + 1] = string.char(byte)
+
+                local byte =
+                    math.floor(buffer / (2 ^ bits)) % 256
+
+                output[#output + 1] = string.char(byte)
                 buffer = buffer % (2 ^ bits)
             end
         end
     end
 
-    return table.concat(result)
+    return table.concat(output)
 end
 
-local EXPIRY_DATE = base64Decode(EXPIRY_B64)
+-- ==========================================
+--             ENCODED SETTINGS
+-- ==========================================
+
+local SERVER_URL = B64Decode(
+    "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL21kNjc1MTU2OS9YRU5PL3JlZnMvaGVhZHMvbWFpbi9zZXZlci50eHQ="
+)
+
+local MSG_CONNECTION = B64Decode(
+    "U0VSVkVSIENPTk5FQ1RJT04gRkFJTEVEIQ=="
+)
+
+local ENABLED_STATUS = B64Decode("T04=")
+
+-- ==========================================
+--              SERVER CHECK
+-- ==========================================
+
+local function checkRemoteServer()
+
+    local ok, response = pcall(function()
+        return gg.makeRequest(SERVER_URL)
+    end)
+
+    if not ok or not response
+        or tonumber(response.code) ~= 200 then
+
+        gg.alert(
+            "⚠️ XENO PANEL\n\n" ..
+            "🔴 SERVER CONNECTION FAILED!\n\n" ..
+            "📩 CONTACT: @xenokamrul"
+        )
+
+        os.exit()
+        return false
+    end
+
+    local status = (response.content or "")
+        :gsub("%s+", "")
+        :upper()
+
+    if status ~= ENABLED_STATUS then
+
+        gg.alert([[
+╔════════════════════════════╗
+   ⚡ XENO-PANEL-OFC-P20-BYPASS ⚡
+╚════════════════════════════╝
+
+       🔴 SERVER OFFLINE
+
+    ❌ SERVER IS CURRENTLY OFF
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    🌐 STATUS: DISCONNECTED
+
+    📩 CONTACT: @xenokamrul
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+       ⚡ PLEASE TRY AGAIN LATER
+]])
+
+        os.exit()
+        return false
+    end
+
+    return true
+end
+
+-- ==========================================
+--             EXECUTE CHECK
+-- ==========================================
+
+if not checkRemoteServer() then
+    os.exit()
+end
+
+-- ==========================================
+--           SERVER CHECK END
+-- ==========================================
+-- Encoded configuration strings (Base64 is obfuscation, not encryption)
+local function _decode64(data)
+    local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local out, buffer, bits = {}, 0, 0
+    for i = 1, #data do
+        local c = data:sub(i, i)
+        if c ~= "=" then
+            local value = chars:find(c, 1, true)
+            if value then
+                buffer = buffer * 64 + value - 1
+                bits = bits + 6
+                if bits >= 8 then
+                    bits = bits - 8
+                    local byte = math.floor(buffer / (2 ^ bits)) % 256
+                    out[#out + 1] = string.char(byte)
+                    buffer = buffer % (2 ^ bits)
+                end
+            end
+        end
+    end
+    return table.concat(out)
+end
+
+local X, I, E
+
+-- ===== KEY + EXPIRY SYSTEM =====
+local LICENSE_KEY = _decode64("WEVOTy05OTk=")
+local EXPIRY_DATE = _decode64("MjA5MC0xMS0zMA==") -- YYYY-MM-DD
 
 local function dateNumber()
-    local t = os.date("*t")
-    return t.year * 10000 + t.month * 100 + t.day
+    local y, m, d = os.date("*t").year, os.date("*t").month, os.date("*t").day
+    return y * 10000 + m * 100 + d
 end
 
 local function parseDate(s)
-    if type(s) ~= "string" then return nil end
     local y, m, d = s:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
     if not y then return nil end
     return tonumber(y) * 10000 + tonumber(m) * 100 + tonumber(d)
@@ -56,7 +164,7 @@ end
 local function checkLicense()
     local expiry = parseDate(EXPIRY_DATE)
     if not expiry then
-        gg.alert("Invalid expiry configuration!")
+        gg.alert("EXPIRY-BAYPASS TELEGRAM DM @xenokamrul❌")
         os.exit()
     end
 
@@ -71,7 +179,7 @@ local function checkLicense()
     end
 
     if input[1] ~= LICENSE_KEY then
-        gg.alert("❌ Invalid Key!")
+        gg.alert("❌ Invalid Key!\nPlease enter a valid license key.")
         os.exit()
     end
 
@@ -97,111 +205,111 @@ end
 X = function()
 gg.toast("⚡ XENO-BAYPASS-LOGING...")
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
-gg.getRangesList("/data/app/~~S4GfLVgoqgVqYlsM-1CuDg==/com.waxmoon.ma.gp-9KDSfIUzw8toQqE9t4Km5A==/lib/arm64/libil2cpp.so")
+gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.toast("🎉 XENO-BAYPASS-ACTIVE  🚀")
 gg.setVisible(false)
 gg.sleep(500)
