@@ -1,7 +1,7 @@
--- ==========================================
---           XENO PREMIUM SYSTEM
---             SERVER CHECK V2
--- ==========================================
+-- ============================================================
+--                    X E N O   P R E M I U M
+--                  OFFICIAL PANEL  |  SERVER CHECK
+-- ============================================================
 
 -- BASE64 DECODER
 local function B64Decode(data)
@@ -189,21 +189,34 @@ end
 checkLicense()
 -- ===== END KEY + EXPIRY SYSTEM =====
 
+-- ============================================================
+--                    X E N O   P R E M I U M
+--                       MAIN CONTROL PANEL
+-- ============================================================
+
 local function M()
-A = gg.choice({
-"📱 XENO-BAYPASS ACTIVE CILK-HERE ✅ ",
-"ℹ️ LUS INFO",
-"🚪 @xeno-baypasa-off 🔄"
-}, nil, ' ADMIN : @fmkamrul1 ')
-if A == nil then else
-if A == 1 then X() end
-if A == 2 then I() end
-if A == 3 then E() end
-end
-PANDA = -1
+    A = gg.choice({
+        "⚡XENO-P20-BYPASS PREMIUM ⚡",
+        "🚀  ACTIVATE  |  👑 XENO-P20-BYPASS START ♻️   ",
+        "👑  ABOUT    |  DEVELOPER INFO ☯️",
+        "🚪  EXIT     |  CLOSE BYPASS",
+        ""
+    }, nil, [[
+╔══════════════════════════════════╗
+        👑  X E N O  P R E M I U M
+          ⚡ OFFICIAL BYPASS ⚡
+╠══════════════════════════════════╣
+  🛡️  STATUS : SERVER VERIFIED
+  👨‍💻  ADMIN  : @xenokamrul
+╚══════════════════════════════════╝
+]])
+    if A == 2 then X() end
+    if A == 3 then I() end
+    if A == 4 then E() end
+    PANDA = -1
 end
 X = function()
-gg.toast("⚡ XENO-BAYPASS-LOGING...")
+gg.toast("⚡ XENO PREMIUM  |  STARTING...")
 gg.getTargetInfo()
 gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
@@ -310,15 +323,15 @@ gg.getTargetInfo()
 gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
 gg.getTargetInfo()
 gg.getRangesList(_decode64("L2RhdGEvYXBwL35+UzRHZkxWZ29xZ1ZxWWxzTS0xQ3VEZz09L2NvbS53YXhtb29uLm1hLmdwLTlLRFNmSVV6dzh0b1FxRTl0NEttNUE9PS9saWIvYXJtNjQvbGliaWwyY3BwLnNv"))
-gg.toast("🎉 XENO-BAYPASS-ACTIVE  🚀")
+gg.toast("🎉 XENO-P20-BYPASS ACTIVE  |  READY! 🚀")
 gg.setVisible(false)
 gg.sleep(500)
 end
 I = function()
-gg.alert(" SCRIPT  32B DEVELOPER @xenokamrul JI\n⚡ ARMv7 / ARM32 VERSION\n🔥 V1 ,  Version")
+gg.alert(" SCRIPT  32B DEVELOPER @xenokamrul ✅ \n⚡ ARMv7 / ARM32 VERSION\n🔥 V1 ,  Version")
 end
 E = function()
-gg.toast("👋 Exit Done")
+gg.toast("👋 XENO-P20-BYPASS |  THANK YOU!")
 os.exit()
 end
 while true do
